@@ -1,2 +1,0 @@
-# synthonia
-Avaliação física, psicoemocional
