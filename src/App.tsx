@@ -5,6 +5,7 @@
 // AI_GENERATED_CODE_START
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import Layout from '@/components/Layout'
 import AuthPage from '@/pages/AuthPage'
 import Dashboard from '@/pages/Dashboard'
 import RecoveryModule from '@/pages/RecoveryModule'
@@ -29,34 +30,24 @@ function App() {
           path="/auth" 
           element={user ? <Navigate to="/dashboard" /> : <AuthPage />} 
         />
-        <Route 
-          path="/dashboard" 
-          element={user ? <Dashboard /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/recovery" 
-          element={user ? <RecoveryModule /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/training" 
-          element={user ? <TrainingModule /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/rehabilitation" 
-          element={user ? <RehabilitationModule /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/sleep" 
-          element={user ? <SleepModule /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/analytics" 
-          element={user ? <AnalyticsModule /> : <Navigate to="/auth" />} 
-        />
-        <Route 
-          path="/ai-insights" 
-          element={user ? <AIInsightsModule /> : <Navigate to="/auth" />} 
-        />
+        {user ? (
+          <Route path="/*" element={
+            <Layout>
+              <Routes>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/recovery" element={<RecoveryModule />} />
+                <Route path="/training" element={<TrainingModule />} />
+                <Route path="/rehabilitation" element={<RehabilitationModule />} />
+                <Route path="/sleep" element={<SleepModule />} />
+                <Route path="/analytics" element={<AnalyticsModule />} />
+                <Route path="/ai-insights" element={<AIInsightsModule />} />
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </Layout>
+          } />
+        ) : (
+          <Route path="/*" element={<Navigate to="/auth" />} />
+        )}
         <Route 
           path="/" 
           element={<Navigate to={user ? "/dashboard" : "/auth"} />} 
