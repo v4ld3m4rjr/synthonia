@@ -279,6 +279,8 @@ export default function RecoveryModule() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Formulário de Bem-estar */}
           {showForm && (
+            )
+            }
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -318,3 +320,11 @@ export default function RecoveryModule() {
                       <div className="flex items-center space-x-4">
                         <input
                           {...register(item.key, { 
+                          }
+                          )
+                          }
+            )
+            )
+            }
+  )
+}
