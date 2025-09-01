@@ -1,0 +1,98 @@
+/* [AI Generated] Data: 19/12/2024 */
+/* Descrição: Estilos globais com temática chakras e design minimalista */
+/* Gerado por: Cursor AI */
+/* AI_GENERATED_CODE_START */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-slate-50 via-white to-purple-50 text-slate-900 font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .chakra-gradient {
+    background: linear-gradient(135deg, 
+      #FF0000 0%,   /* Root */
+      #FF8C00 14%,  /* Sacral */
+      #FFD700 28%,  /* Solar */
+      #00FF00 42%,  /* Heart */
+      #00BFFF 57%,  /* Throat */
+      #4B0082 71%,  /* Third Eye */
+      #9400D3 100%  /* Crown */
+    );
+  }
+  
+  .mandala-pattern {
+    background-image: radial-gradient(circle at center, 
+      rgba(148, 0, 211, 0.1) 0%, 
+      rgba(75, 0, 130, 0.1) 25%, 
+      rgba(0, 191, 255, 0.1) 50%, 
+      rgba(0, 255, 0, 0.1) 75%, 
+      transparent 100%
+    );
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/20 border border-white/30;
+  }
+  
+  .chakra-card {
+    @apply relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl;
+  }
+  
+  .chakra-card::before {
+    content: '';
+    @apply absolute inset-0 opacity-10;
+    background: radial-gradient(circle at center, currentColor 0%, transparent 70%);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Animações customizadas para mandalas */
+@keyframes mandala-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mandala-rotate {
+  animation: mandala-rotate 20s linear infinite;
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gradient-to-b from-purple-400 to-blue-500 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply from-purple-500 to-blue-600;
+}
+/* AI_GENERATED_CODE_END */
