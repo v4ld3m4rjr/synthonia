@@ -1,208 +1,320 @@
 // [AI Generated] Data: 19/12/2024
-// Descrição: Layout global com navegação superior e design responsivo
+// Descrição: Módulo de Recovery com questionário de bem-estar e visualização de dados
 // Gerado por: Cursor AI
-// Versão: React 18.2.0, Framer Motion 10.16.5
+// Versão: React 18.2.0, React Hook Form 7.48.2, Recharts 2.8.0
 // AI_GENERATED_CODE_START
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  Heart, 
-  Dumbbell, 
-  MapPin, 
-  Brain, 
-  Moon, 
-  BarChart3, 
-  LogOut, 
-  User,
-  Sparkles,
-  Home
-} from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { Heart, Moon, Zap, Brain, Smile, Activity, Save, TrendingUp } from 'lucide-react'
+import { format, subDays } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
-interface LayoutProps {
-  children: React.ReactNode
+interface WellnessFormData {
+  sleep_quality: number
+  fatigue_level: number
+  muscle_soreness: number
+  stress_level: number
+  mood_level: number
+  prs_score: number
+  notes?: string
 }
 
-const navigationItems = [
+interface RecoveryEntry {
+  id: string
+  date: string
+  sleep_quality: number
+  fatigue_level: number
+  muscle_soreness: number
+  stress_level: number
+  mood_level: number
+  prs_score: number
+  notes: string | null
+}
+
+const wellnessItems = [
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    icon: <Home className="w-5 h-5" />,
-    route: '/dashboard',
-    color: 'from-slate-500 to-slate-600'
-  },
-  {
-    id: 'recovery',
-    title: 'Recovery',
-    icon: <Heart className="w-5 h-5" />,
-    route: '/recovery',
-    color: 'from-chakra-heart to-emerald-400'
-  },
-  {
-    id: 'training',
-    title: 'Treinamento',
-    icon: <Dumbbell className="w-5 h-5" />,
-    route: '/training',
-    color: 'from-chakra-solar to-amber-400'
-  },
-  {
-    id: 'rehabilitation',
-    title: 'Reabilitação',
-    icon: <MapPin className="w-5 h-5" />,
-    route: '/rehabilitation',
-    color: 'from-chakra-root to-red-400'
-  },
-  {
-    id: 'sleep',
-    title: 'Sono',
+    key: 'sleep_quality' as keyof WellnessFormData,
+    label: 'Qualidade do Sono',
     icon: <Moon className="w-5 h-5" />,
-    route: '/sleep',
-    color: 'from-chakra-throat to-cyan-400'
+    color: 'from-blue-500 to-indigo-600',
+    description: 'Como você avalia a qualidade do seu sono?'
   },
   {
-    id: 'analytics',
-    title: 'Analytics',
-    icon: <BarChart3 className="w-5 h-5" />,
-    route: '/analytics',
-    color: 'from-chakra-crown to-purple-400'
+    key: 'fatigue_level' as keyof WellnessFormData,
+    label: 'Nível de Fadiga',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'from-yellow-500 to-orange-600',
+    description: 'Quão cansado você se sente?'
   },
   {
-    id: 'ai-insights',
-    title: 'IA',
+    key: 'muscle_soreness' as keyof WellnessFormData,
+    label: 'Dor Muscular',
+    icon: <Activity className="w-5 h-5" />,
+    color: 'from-red-500 to-pink-600',
+    description: 'Nível de dor ou desconforto muscular'
+  },
+  {
+    key: 'stress_level' as keyof WellnessFormData,
+    label: 'Nível de Estresse',
     icon: <Brain className="w-5 h-5" />,
-    route: '/ai-insights',
-    color: 'from-chakra-third to-indigo-400'
+    color: 'from-purple-500 to-violet-600',
+    description: 'Quão estressado você se sente?'
+  },
+  {
+    key: 'mood_level' as keyof WellnessFormData,
+    label: 'Humor Geral',
+    icon: <Smile className="w-5 h-5" />,
+    color: 'from-green-500 to-emerald-600',
+    description: 'Como está seu humor hoje?'
+  },
+  {
+    key: 'prs_score' as keyof WellnessFormData,
+    label: 'Percepção de Recuperação (PRS)',
+    icon: <Heart className="w-5 h-5" />,
+    color: 'from-chakra-heart to-emerald-500',
+    description: 'O quão recuperado você se sente? (0-10)'
   }
 ]
 
-export default function Layout({ children }: LayoutProps) {
+export default function RecoveryModule() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { profile, signOut } = useAuth()
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [entries, setEntries] = useState<RecoveryEntry[]>([])
+  const [showForm, setShowForm] = useState(true)
+  const [todayEntry, setTodayEntry] = useState<RecoveryEntry | null>(null)
 
-  const handleSignOut = async () => {
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<WellnessFormData>({
+    defaultValues: {
+      sleep_quality: 5,
+      fatigue_level: 5,
+      muscle_soreness: 5,
+      stress_level: 5,
+      mood_level: 5,
+      prs_score: 5
+    }
+  })
+
+  const watchedValues = watch()
+
+  useEffect(() => {
+    if (user) {
+      fetchRecoveryEntries()
+      checkTodayEntry()
+    }
+  }, [user])
+
+  const fetchRecoveryEntries = async () => {
+    if (!user) return
+
     try {
-      await signOut()
+      const { data, error } = await supabase
+        .from('recovery_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30)
+
+      if (error) throw error
+      setEntries(data || [])
     } catch (error) {
-      console.error('Erro ao fazer logout:', error)
+      console.error('Erro ao buscar entradas de recuperação:', error)
     }
   }
 
-  const getProfileTypeLabel = (type: string) => {
-    switch (type) {
-      case 'athlete': return 'Atleta'
-      case 'trainer': return 'Treinador'
-      case 'physiotherapist': return 'Fisioterapeuta'
-      default: return type
+  const checkTodayEntry = async () => {
+    if (!user) return
+
+    const today = format(new Date(), 'yyyy-MM-dd')
+    
+    try {
+      const { data, error } = await supabase
+        .from('recovery_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+
+      if (data) {
+        setTodayEntry(data)
+        setShowForm(false)
+        // Preencher o formulário com os dados existentes
+        reset(data)
+      }
+    } catch (error) {
+      // Não há entrada para hoje, mostrar formulário
+      setShowForm(true)
     }
   }
 
-  const isActiveRoute = (route: string) => {
-    return location.pathname === route
+  const onSubmit = async (data: WellnessFormData) => {
+    if (!user) return
+
+    setLoading(true)
+    const today = format(new Date(), 'yyyy-MM-dd')
+
+    try {
+      if (todayEntry) {
+        // Atualizar entrada existente
+        const { error } = await supabase
+          .from('recovery_entries')
+          .update({
+            ...data,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', todayEntry.id)
+
+        if (error) throw error
+      } else {
+        // Criar nova entrada
+        const { error } = await supabase
+          .from('recovery_entries')
+          .insert({
+            user_id: user.id,
+            date: today,
+            ...data
+          })
+
+        if (error) throw error
+      }
+
+      await fetchRecoveryEntries()
+      await checkTodayEntry()
+      setShowForm(false)
+    } catch (error) {
+      console.error('Erro ao salvar entrada de recuperação:', error)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const calculateReadinessScore = () => {
+    const values = watchedValues
+    // Fórmula simples: média ponderada onde valores altos de sono, humor e PRS são bons
+    // e valores altos de fadiga, dor e estresse são ruins
+    const positiveFactors = (values.sleep_quality + values.mood_level + values.prs_score) / 3
+    const negativeFactors = (values.fatigue_level + values.muscle_soreness + values.stress_level) / 3
+    const readiness = ((positiveFactors + (10 - negativeFactors)) / 2)
+    return Math.round(readiness * 10) / 10
+  }
+
+  const getReadinessColor = (score: number) => {
+    if (score >= 7) return 'text-green-500'
+    if (score >= 5) return 'text-yellow-500'
+    return 'text-red-500'
+  }
+
+  const getReadinessLabel = (score: number) => {
+    if (score >= 7) return 'Excelente'
+    if (score >= 5) return 'Moderada'
+    return 'Baixa'
+  }
+
+  // Preparar dados para gráficos
+  const chartData = entries.slice(0, 14).reverse().map(entry => ({
+    date: format(new Date(entry.date), 'dd/MM', { locale: ptBR }),
+    sono: entry.sleep_quality,
+    fadiga: 10 - entry.fatigue_level, // Inverter para que maior seja melhor
+    dor: 10 - entry.muscle_soreness,
+    estresse: 10 - entry.stress_level,
+    humor: entry.mood_level,
+    prs: entry.prs_score
+  }))
+
+  const radarData = todayEntry ? [
+    { subject: 'Sono', A: todayEntry.sleep_quality, fullMark: 10 },
+    { subject: 'Energia', A: 10 - todayEntry.fatigue_level, fullMark: 10 },
+    { subject: 'Músculos', A: 10 - todayEntry.muscle_soreness, fullMark: 10 },
+    { subject: 'Calma', A: 10 - todayEntry.stress_level, fullMark: 10 },
+    { subject: 'Humor', A: todayEntry.mood_level, fullMark: 10 },
+    { subject: 'Recuperação', A: todayEntry.prs_score, fullMark: 10 }
+  ] : []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 relative overflow-hidden">
-      {/* Background decorativo */}
-      <div className="absolute inset-0 mandala-pattern opacity-20" />
-      
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 glass-effect border-b border-white/20 sticky top-0"
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo e Título */}
-            <div className="flex items-center space-x-4">
-              <motion.div
-                whileHover={{ rotate: 180 }}
-                transition={{ duration: 0.5 }}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-chakra-crown to-chakra-third flex items-center justify-center cursor-pointer"
-                onClick={() => navigate('/dashboard')}
-              >
-                <Sparkles className="w-5 h-5 text-white" />
-              </motion.div>
-              <div>
-                <h1 className="text-xl font-display font-bold bg-gradient-to-r from-chakra-crown to-chakra-third bg-clip-text text-transparent">
-                  SynthonIA AI
-                </h1>
-                <p className="text-slate-600 text-xs">
-                  {profile?.full_name || 'Usuário'}
-                </p>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
+          <div className="flex items-center space-x-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/dashboard')}
+              className="p-2 rounded-xl bg-white/50 hover:bg-white/80 transition-colors duration-200"
+            >
+              <ArrowLeft className="w-5 h-5 text-slate-600" />
+            </motion.button>
+            
+            <div>
+              <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-chakra-heart to-emerald-500 bg-clip-text text-transparent">
+                Módulo Recovery
+              </h1>
+              <p className="text-slate-600">Monitoramento de recuperação e prontidão</p>
             </div>
+          </div>
 
-            {/* Navegação Central */}
-            <nav className="hidden lg:flex items-center space-x-2">
-              {navigationItems.map((item) => (
-                <motion.button
-                  key={item.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(item.route)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                    isActiveRoute(item.route)
-                      ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
-                      : 'text-slate-600 hover:text-slate-800 hover:bg-white/50'
-                  }`}
-                  title={item.title}
-                >
-                  {item.icon}
-                  <span className="hidden xl:inline text-sm">{item.title}</span>
-                </motion.button>
-              ))}
-            </nav>
-
-            {/* Navegação Mobile */}
-            <nav className="flex lg:hidden items-center space-x-1">
-              {navigationItems.slice(0, 4).map((item) => (
-                <motion.button
-                  key={item.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(item.route)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    isActiveRoute(item.route)
-                      ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
-                      : 'text-slate-600 hover:text-slate-800 hover:bg-white/50'
-                  }`}
-                  title={item.title}
-                >
-                  {item.icon}
-                </motion.button>
-              ))}
-            </nav>
-
-            {/* Informações do Usuário e Logout */}
-            <div className="flex items-center space-x-3">
-              <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-white/50 rounded-full">
-                <User className="w-4 h-4 text-slate-600" />
-                <span className="text-sm font-medium text-slate-700">
-                  {getProfileTypeLabel(profile?.profile_type || '')}
-                </span>
-              </div>
-              
+          <div className="flex items-center space-x-4">
+            {!showForm && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleSignOut}
-                className="p-2 text-slate-600 hover:text-red-500 transition-colors duration-200 rounded-lg hover:bg-white/50"
-                title="Sair"
+                onClick={() => setShowForm(true)}
+                className="px-4 py-2 bg-gradient-to-r from-chakra-heart to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200"
               >
-                <LogOut className="w-5 h-5" />
+                {todayEntry ? 'Editar Hoje' : 'Registrar Hoje'}
               </motion.button>
-            </div>
+            )}
           </div>
-        </div>
-      </motion.header>
+        </motion.div>
 
-      {/* Main Content */}
-      <main className="relative z-10">
-        {children}
-      </main>
-    </div>
-  )
-}
-// AI_GENERATED_CODE_END
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Formulário de Bem-estar */}
+          {showForm && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="lg:col-span-2"
+            >
+              <div className="glass-effect rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-display font-semibold text-slate-800">
+                    Questionário de Bem-estar Diário
+                  </h2>
+                  <div className="text-sm text-slate-500">
+                    {format(new Date(), "dd 'de' MMMM", { locale: ptBR })}
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  {wellnessItems.map((item, index) => (
+                    <motion.div
+                      key={item.key}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-lg bg-gradient-to-r ${item.color} text-white`}>
+                          {item.icon}
+                        </div>
+                        <div>
+                          <label className="block font-medium text-slate-800">
+                            {item.label}
+                          </label>
+                          <p className="text-sm text-slate-600">{item.description}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4">
+                        <input
+                          {...register(item.key, { 
