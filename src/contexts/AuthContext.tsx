@@ -82,13 +82,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single()
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Erro ao buscar perfil:', error)
+        setProfile(null)
+      } else if (error && error.code === 'PGRST116') {
+        // Nenhum perfil encontrado para este usuário
+        console.log('Nenhum perfil encontrado para o usuário:', userId)
+        setProfile(null)
       } else {
         setProfile(data)
       }
     } catch (error) {
       console.error('Erro ao buscar perfil:', error)
+      setProfile(null)
     } finally {
       setLoading(false)
     }

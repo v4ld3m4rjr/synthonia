@@ -36,7 +36,11 @@ export default function AuthPage() {
         await signIn(data.email, data.password)
       }
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro. Tente novamente.')
+      if (err.message?.includes('email_not_confirmed') || err.message?.includes('Email not confirmed')) {
+        setError('Por favor, verifique seu email e clique no link de confirmação antes de fazer login.')
+      } else {
+        setError(err.message || 'Ocorreu um erro. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
