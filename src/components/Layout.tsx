@@ -348,7 +348,7 @@ export default function RecoveryModule() {
 
                   <div className="flex items-center justify-between pt-6 border-t border-gray-200">
                     <div className="text-center">
-                      <div className="text-sm text-slate-600 mb-1">Prontidão Geral</div>
+                      <div className="text-sm text-slate-600 mb-1">Prontidão Estimada</div>
                       <div className={`text-2xl font-bold ${getReadinessColor(calculateReadinessScore())}`}>
                         {calculateReadinessScore()}/10
                       </div>
@@ -388,7 +388,7 @@ export default function RecoveryModule() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className={showForm ? 'lg:col-span-1' : 'lg:col-span-3'}
+            className={showForm ? "lg:col-span-1" : "lg:col-span-3"}
           >
             <div className="space-y-6">
               {/* Score de Hoje */}
@@ -432,11 +432,11 @@ export default function RecoveryModule() {
                 </div>
               )}
 
-              {/* Histórico */}
+              {/* Gráfico de Tendências */}
               {chartData.length > 0 && (
                 <div className="glass-effect rounded-2xl p-6">
                   <h3 className="text-lg font-display font-semibold text-slate-800 mb-4">
-                    Tendência (14 dias)
+                    Tendências (14 dias)
                   </h3>
                   
                   <div className="h-64">
