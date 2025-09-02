@@ -44,41 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Obter sessão inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    }).catch((error) => {
-      console.error('Erro ao obter sessão inicial:', error)
-      setLoading(false)
-    })
-
-    // Escutar mudanças de autenticação
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
+  // Função centralizada para buscar o perfil
   const fetchProfile = async (userId: string) => {
-    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -87,44 +54,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao buscar perfil:', error)
-        setProfile(null)
-      } else if (error && error.code === 'PGRST116') {
-        // Nenhum perfil encontrado para este usuário
-        console.log('Nenhum perfil encontrado para o usuário:', userId)
-        setProfile(null)
-      } else {
-        setProfile(data)
+        throw error
       }
+
+      // Se nenhum perfil for encontrado, data será null
+      setProfile(data as Profile)
     } catch (error) {
       console.error('Erro ao buscar perfil:', error)
       setProfile(null)
-    } finally {
-      setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const handleAuthStateChange = async (event: string, currentSession: Session | null) => {
+      setSession(currentSession)
+      setUser(currentSession?.user ?? null)
+      setProfile(null) // Limpa o perfil para evitar estado incorreto
+
+      if (currentSession?.user) {
+        await fetchProfile(currentSession.user.id)
+      }
+      
+      setLoading(false)
+    }
+
+    // Obter sessão inicial e escutar mudanças
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const signUp = async (email: string, password: string, fullName: string, profileType: Profile['profile_type']) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-    })
-
-    if (error) throw error
-
-    if (data.user) {
-      // Criar perfil do usuário
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email!,
+      options: {
+        data: {
           full_name: fullName,
           profile_type: profileType,
-        })
+        }
+      }
+    })
 
-      if (profileError) throw profileError
+    if (error) {
+      throw error
     }
+    
+    // O perfil será criado automaticamente via trigger do Supabase,
+    // e o estado será atualizado pelo onAuthStateChange
   }
 
   const signIn = async (email: string, password: string) => {
@@ -133,28 +110,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     })
 
-    if (error) throw error
+    if (error) {
+      throw error
+    }
   }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (error) {
+      throw error
+    }
   }
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) throw new Error('Usuário não autenticado')
+    if (!user || !profile) {
+      throw new Error('Usuário ou perfil não autenticado')
+    }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', user.id)
+      .select()
+      .single()
 
-    if (error) throw error
-
-    // Atualizar estado local
-    if (profile) {
-      setProfile({ ...profile, ...updates })
+    if (error) {
+      throw error
     }
+
+    setProfile(data as Profile)
   }
 
   const value = {
