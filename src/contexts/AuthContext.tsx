@@ -171,3 +171,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 // AI_GENERATED_CODE_END
+
+export { AuthProvider }
