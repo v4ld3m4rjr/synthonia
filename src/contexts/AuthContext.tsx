@@ -54,6 +54,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLoading(false)
       }
+    }).catch((error) => {
+      console.error('Erro ao obter sessão inicial:', error)
+      setLoading(false)
     })
 
     // Escutar mudanças de autenticação
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const fetchProfile = async (userId: string) => {
+    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
