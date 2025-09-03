@@ -100,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string, profileType: Profile['profile_type']) => {
     console.log('📝 AuthContext: Iniciando processo de cadastro para:', email)
     
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -110,8 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
     if (error) {
-      throw error
       console.error('❌ AuthContext: Erro no cadastro:', error)
+      throw error
     }
     
     console.log('✅ AuthContext: Cadastro realizado com sucesso')
