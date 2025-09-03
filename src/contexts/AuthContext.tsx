@@ -99,14 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, profileType: Profile['profile_type']) => {
     const { data, error } = await supabase.auth.signUp({
-    console.log('👤 fetchProfile: Buscando perfil para usuário:', userId)
       email,
       password,
       options: {
         data: {
           full_name: fullName,
           profile_type: profileType,
-        console.error('❌ fetchProfile: Erro ao buscar perfil:', error)
         }
       }
     })
