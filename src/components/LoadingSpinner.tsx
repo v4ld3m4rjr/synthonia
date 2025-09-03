@@ -3,9 +3,22 @@
 // Gerado por: Cursor AI
 // Versão: React 18.2.0, Framer Motion 10.16.5
 // AI_GENERATED_CODE_START
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 
 export default function LoadingSpinner() {
+  console.log('⏳ LoadingSpinner: Componente renderizado')
+  
+  // Adicionar timeout de segurança para detectar travamentos
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ LoadingSpinner: Componente ativo por mais de 10 segundos - possível travamento!')
+      console.warn('⚠️ Verifique as variáveis de ambiente e a conexão com o Supabase')
+    }, 10000)
+    
+    return () => clearTimeout(timeout)
+  }, [])
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-purple-50">
       <div className="relative">

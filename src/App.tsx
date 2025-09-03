@@ -11,14 +11,19 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 function App() {
   const { user, loading } = useAuth()
 
+  console.log('🏠 App: Estado atual - loading:', loading, 'user:', user ? 'Presente' : 'Ausente')
+
   if (loading) {
+    console.log('⏳ App: Exibindo LoadingSpinner')
     return <LoadingSpinner />
   }
 
   if (!user) {
+    console.log('🔐 App: Usuário não autenticado, redirecionando para /auth')
     return <Navigate to="/auth" replace />
   }
 
+  console.log('✅ App: Usuário autenticado, renderizando layout principal')
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50">
       <Layout>

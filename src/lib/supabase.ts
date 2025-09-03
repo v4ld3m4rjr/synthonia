@@ -5,12 +5,27 @@
 // AI_GENERATED_CODE_START
 import { createClient } from '@supabase/supabase-js'
 
+// [AI Generated] Data: 19/12/2024
+// Descrição: Adicionado sistema de diagnóstico para variáveis de ambiente
+// Gerado por: Cursor AI
+// AI_GENERATED_CODE_START
+console.log('🔍 Verificando variáveis de ambiente do Supabase...')
+console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? '✅ Definida' : '❌ Não definida')
+console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ Definida' : '❌ Não definida')
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Erro crítico: Variáveis de ambiente do Supabase não encontradas!')
+  console.error('VITE_SUPABASE_URL:', supabaseUrl)
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Presente' : 'Ausente')
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
+
+console.log('✅ Cliente Supabase sendo criado...')
+console.log('URL:', supabaseUrl)
+console.log('Anon Key:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'Ausente')
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -19,6 +34,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true
   }
 })
+
+console.log('✅ Cliente Supabase criado com sucesso')
+// AI_GENERATED_CODE_END
 
 // Tipos para o banco de dados
 export interface Database {

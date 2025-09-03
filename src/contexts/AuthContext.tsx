@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Se nenhum perfil for encontrado, data será null
+      console.log('👤 fetchProfile: Perfil encontrado:', data ? 'Sim' : 'Não')
       setProfile(data as Profile)
     } catch (error) {
       console.error('Erro ao buscar perfil:', error)
@@ -66,32 +67,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    console.log('🔄 AuthContext: Iniciando configuração de autenticação...')
+    
     const handleAuthStateChange = async (event: string, currentSession: Session | null) => {
+      console.log('🔄 AuthContext: Mudança de estado de autenticação detectada:', event)
+      console.log('🔄 AuthContext: Sessão atual:', currentSession ? 'Presente' : 'Ausente')
+      
       setSession(currentSession)
       setUser(currentSession?.user ?? null)
       setProfile(null) // Limpa o perfil para evitar estado incorreto
 
       if (currentSession?.user) {
+        console.log('👤 AuthContext: Usuário logado, buscando perfil...')
         await fetchProfile(currentSession.user.id)
+      } else {
+        console.log('👤 AuthContext: Nenhum usuário logado')
       }
       
+      console.log('✅ AuthContext: Definindo loading como false')
       setLoading(false)
     }
 
+    console.log('🔄 AuthContext: Configurando listener de mudanças de autenticação...')
     // Obter sessão inicial e escutar mudanças
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+
+    console.log('✅ AuthContext: Listener configurado com sucesso')
 
     return () => subscription.unsubscribe()
   }, [])
 
   const signUp = async (email: string, password: string, fullName: string, profileType: Profile['profile_type']) => {
     const { data, error } = await supabase.auth.signUp({
+    console.log('👤 fetchProfile: Buscando perfil para usuário:', userId)
       email,
       password,
       options: {
         data: {
           full_name: fullName,
           profile_type: profileType,
+        console.error('❌ fetchProfile: Erro ao buscar perfil:', error)
         }
       }
     })

@@ -18,6 +18,22 @@ import AnalyticsModule from './pages/AnalyticsModule'
 import AIInsightsModule from './pages/AIInsightsModule'
 import './index.css'
 
+// [AI Generated] Data: 19/12/2024
+// Descrição: Adicionado diagnóstico inicial da aplicação
+// Gerado por: Cursor AI
+// AI_GENERATED_CODE_START
+import { runDiagnostics, testSupabaseConnection } from './utils/diagnostics'
+
+// Executar diagnósticos na inicialização
+console.log('🚀 Iniciando SynthonIA AI...')
+runDiagnostics()
+
+// Testar conexão com Supabase após um pequeno delay
+setTimeout(async () => {
+  await testSupabaseConnection()
+}, 1000)
+// AI_GENERATED_CODE_END
+
 const router = createBrowserRouter([
   {
     path: "/auth",
