@@ -1,0 +1,6 @@
+Confirme seu e-mail — Synthonia AI
+
+Para ativar sua conta, acesse:
+{{ .ConfirmationURL }}
+
+Se você não solicitou, ignore este e-mail.

@@ -1,0 +1,82 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Círculo externo decorativo com padrão de corda -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.8" stroke-dasharray="8,4"/>
+  
+  <!-- Tronco da árvore mais detalhado -->
+  <path d="M100 160 Q88 150 85 135 Q82 120 88 105 Q92 90 96 75 Q98 65 100 55 Q102 65 104 75 Q108 90 112 105 Q118 120 115 135 Q112 150 100 160" 
+        fill="currentColor" opacity="0.9" stroke="currentColor" strokeWidth="1"/>
+  
+  <!-- Copa da árvore com mais detalhes -->
+  <g opacity="0.8">
+    <!-- Copa principal -->
+    <circle cx="100" cy="70" r="40" fill="currentColor" opacity="0.7"/>
+    
+    <!-- Folhagem detalhada -->
+    <g opacity="0.9">
+      <!-- Camada superior de folhas -->
+      <circle cx="85" cy="55" r="15" fill="currentColor" opacity="0.6"/>
+      <circle cx="115" cy="55" r="15" fill="currentColor" opacity="0.6"/>
+      <circle cx="100" cy="45" r="12" fill="currentColor" opacity="0.7"/>
+      
+      <!-- Camada média de folhas -->
+      <circle cx="70" cy="75" r="18" fill="currentColor" opacity="0.6"/>
+      <circle cx="130" cy="75" r="18" fill="currentColor" opacity="0.6"/>
+      <circle cx="100" cy="65" r="20" fill="currentColor" opacity="0.8"/>
+      
+      <!-- Camada inferior de folhas */
+      <circle cx="80" cy="90" r="14" fill="currentColor" opacity="0.6"/>
+      <circle cx="120" cy="90" r="14" fill="currentColor" opacity="0.6"/>
+      
+      <!-- Pequenas folhas espalhadas */
+      <circle cx="65" cy="65" r="8" fill="currentColor" opacity="0.5"/>
+      <circle cx="135" cy="65" r="8" fill="currentColor" opacity="0.5"/>
+      <circle cx="75" cy="45" r="6" fill="currentColor" opacity="0.5"/>
+      <circle cx="125" cy="45" r="6" fill="currentColor" opacity="0.5"/>
+    </g>
+  </g>
+  
+  <!-- Sistema de raízes mais elaborado -->
+  <g opacity="0.7" stroke="currentColor" strokeWidth="2.5" fill="none">
+    <!-- Raízes principais -->
+    <path d="M95 160 Q85 170 75 180 Q70 185 65 190"/>
+    <path d="M105 160 Q115 170 125 180 Q130 185 135 190"/>
+    <path d="M100 165 Q100 175 100 185 Q100 190 100 195"/>
+    
+    <!-- Raízes secundárias -->
+    <path d="M90 165 Q80 175 70 185"/>
+    <path d="M110 165 Q120 175 130 185"/>
+    <path d="M95 170 Q85 180 80 190"/>
+    <path d="M105 170 Q115 180 120 190"/>
+  </g>
+  
+  <!-- Símbolo Yin-Yang central nas raízes - maior e mais detalhado -->
+  <g transform="translate(100, 175)">
+    <!-- Círculo externo do yin-yang -->
+    <circle r="18" fill="currentColor" stroke="currentColor" strokeWidth="1"/>
+    
+    <!-- Parte branca do yin-yang -->
+    <path d="M 0,-18 A 9,9 0 0,1 0,0 A 9,9 0 0,1 0,18 A 18,18 0 0,1 0,-18" fill="white"/>
+    
+    <!-- Pontos do yin-yang -->
+    <circle cy="-9" r="3" fill="white"/>
+    <circle cy="9" r="3" fill="currentColor"/>
+    
+    <!-- Borda decorativa do yin-yang -->
+    <circle r="18" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.8"/>
+  </g>
+  
+  <!-- Elementos decorativos adicionais -->
+  <g opacity="0.4">
+    <!-- Pequenos círculos decorativos ao redor -->
+    <circle cx="50" cy="50" r="2" fill="currentColor"/>
+    <circle cx="150" cy="50" r="2" fill="currentColor"/>
+    <circle cx="50" cy="150" r="2" fill="currentColor"/>
+    <circle cx="150" cy="150" r="2" fill="currentColor"/>
+    
+    <!-- Linhas decorativas nos cantos -->
+    <path d="M30 30 Q35 25 40 30 Q35 35 30 30" fill="currentColor"/>
+    <path d="M170 30 Q165 25 160 30 Q165 35 170 30" fill="currentColor"/>
+    <path d="M30 170 Q35 165 40 170 Q35 175 30 170" fill="currentColor"/>
+    <path d="M170 170 Q165 165 160 170 Q165 175 170 170" fill="currentColor"/>
+  </g>
+</svg>

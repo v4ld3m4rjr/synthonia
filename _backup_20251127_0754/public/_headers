@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: wss: https://psussppamhqksocipzme.supabase.co https://*.supabase.co; font-src 'self' data:; worker-src 'self' blob:
