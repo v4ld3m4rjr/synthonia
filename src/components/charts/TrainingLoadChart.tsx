@@ -1,120 +1,93 @@
-import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { supabaseService } from '../../services/supabase.service';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { calculateInternalLoad } from '../../utils/calculations';
 
-interface TrainingLoadChartProps {
-  userId: string;
-  days?: number;
-}
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Activity } from 'lucide-react';
 
-export function TrainingLoadChart({ userId, days = 14 }: TrainingLoadChartProps) {
-  const { data: sessions, isLoading, error } = useQuery({
-    queryKey: ['training-sessions', userId, days],
-    queryFn: async () => {
-      const data = await supabaseService.getTrainingSessions(userId, days);
-      return data.reverse();
-    },
-  });
+export const TrainingLoadChart = ({ userId, days = 28 }: { userId: string, days?: number }) => {
+  const [data, setData] = useState<any[]>([]);
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-72 flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: metrics } = await supabase
+        .from('daily_metrics_physical')
+        .select('date, ctl, atl, tsb')
+        .eq('patient_id', userId)
+        .order('date', { ascending: true })
+        .limit(days);
 
-  if (error) {
-    return (
-      <div className="w-full h-72 flex items-center justify-center bg-red-50 rounded-lg">
-        <p className="text-red-600">Erro ao carregar dados de treino</p>
-      </div>
-    );
-  }
-
-  if (!sessions || sessions.length === 0) {
-    return (
-      <div className="w-full h-72 flex items-center justify-center bg-gray-50 rounded-lg">
-        <p className="text-gray-500">Nenhum treino registrado ainda</p>
-      </div>
-    );
-  }
-
-  const chartData = sessions.map(session => {
-    const internalLoad = calculateInternalLoad(session.duration_minutes || 0, session.rpe || 0);
-    
-    return {
-      date: format(new Date(session.date), 'dd/MMM', { locale: ptBR }),
-      cargaInterna: internalLoad,
-      duracao: session.duration_minutes || 0,
-      rpe: session.rpe || 0,
+      if (metrics) {
+        // Format date for display
+        const formatted = metrics.map(m => ({
+          ...m,
+          displayDate: new Date(m.date).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })
+        }));
+        setData(formatted);
+      }
     };
-  });
-
-  const maxLoad = Math.max(...chartData.map(d => d.cargaInterna));
-  const avgLoad = chartData.reduce((sum, d) => sum + d.cargaInterna, 0) / chartData.length;
+    fetchData();
+  }, [userId, days]);
 
   return (
-    <div className="w-full">
-      <h3 className="text-lg font-semibold mb-2 text-gray-800">Carga de Treino ({days} últimos treinos)</h3>
-      <div className="mb-4 grid grid-cols-3 gap-4 text-sm">
-        <div className="bg-indigo-50 p-3 rounded-lg">
-          <p className="text-gray-600 text-xs">Carga Máxima</p>
-          <p className="text-xl font-bold text-indigo-600">{maxLoad.toFixed(0)}</p>
+    <div className="w-full h-[300px] mt-4">
+      {data.length === 0 ? (
+        <div className="h-full flex flex-col items-center justify-center text-slate-400">
+          <Activity className="w-8 h-8 opacity-50 mb-2" />
+          <p>Ainda sem dados de Carga de Treino suficientes</p>
         </div>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <p className="text-gray-600 text-xs">Carga Média</p>
-          <p className="text-xl font-bold text-green-600">{avgLoad.toFixed(0)}</p>
-        </div>
-        <div className="bg-purple-50 p-3 rounded-lg">
-          <p className="text-gray-600 text-xs">Total de Treinos</p>
-          <p className="text-xl font-bold text-purple-600">{sessions.length}</p>
-        </div>
-      </div>
-      
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="date" 
-            stroke="#6b7280" 
-            style={{ fontSize: '12px' }}
-          />
-          <YAxis 
-            stroke="#6b7280" 
-            style={{ fontSize: '12px' }}
-            label={{ value: 'Carga Interna (AU)', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
-          />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#fff', 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}
-            formatter={(value: any, name: string) => {
-              if (name === 'cargaInterna') return [value.toFixed(0), 'Carga Interna'];
-              if (name === 'duracao') return [value, 'Duração (min)'];
-              if (name === 'rpe') return [value, 'RPE'];
-              return [value, name];
-            }}
-          />
-          <Legend />
-          <Bar 
-            dataKey="cargaInterna" 
-            fill="#4f46e5" 
-            radius={[8, 8, 0, 0]}
-            name="Carga Interna"
-          />
-        </BarChart>
-      </ResponsiveContainer>
-      
-      <p className="text-xs text-gray-500 mt-2">
-        Carga Interna = Duração × RPE | RPE: Percepção Subjetiva de Esforço (0-10)
-      </p>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorCtl" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorAtl" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="displayDate"
+              tick={{ fontSize: 12, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 12, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={{ borderRadius: '12px', background: '#0f172a', border: '1px solid #1e293b', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              itemStyle={{ fontSize: '12px' }}
+            />
+            <ReferenceLine y={0} stroke="#334155" />
+            <Area
+              type="monotone"
+              dataKey="ctl"
+              stroke="#3b82f6"
+              strokeWidth={3}
+              fillOpacity={1}
+              fill="url(#colorCtl)"
+              name="Fitness (CTL)"
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="atl"
+              stroke="#ef4444"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              fillOpacity={1}
+              fill="url(#colorAtl)"
+              name="Fatiga (ATL)"
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
-}
+};

@@ -1,122 +1,262 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import type { DailyMetricsMental, Profile } from '../../types';
-import { checkManiaRisk, checkSuicideRisk } from '../../utils/calculations';
+import type { Profile } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { ReadinessTrendChart } from '../../components/charts/ReadinessTrendChart';
 import { MentalHealthScoreChart } from '../../components/charts/MentalHealthScoreChart';
-import { BarChart3 } from 'lucide-react';
-
-// Componente simples de Card para garantir que não quebre se o ui/Card não existir
-interface SimpleCardProps {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-}
-
-const SimpleCard = ({ title, children, className = '', onClick }: SimpleCardProps) => (
-  <div onClick={onClick} className={`bg-card border border-border rounded-xl p-6 shadow-sm ${className}`}>
-    <h3 className="text-lg font-semibold mb-4 text-foreground">{title}</h3>
-    {children}
-  </div>
-);
+import { TrainingLoadChart } from '../../components/charts/TrainingLoadChart';
+import { BarChart3, CheckCircle, Brain, Activity, Calendar, ClipboardList, Play } from 'lucide-react';
+import { SchedulerSystem, type ScheduledTask } from '../../systems/SchedulerSystem';
+import { QuestionnaireRunner } from '../../components/QuestionnaireRunner';
+import { questionnaires } from '../../data/questionnaires';
 
 export function PatientDashboard({ userProfile }: { userProfile: Profile }) {
-  const [mentalMetrics, setMentalMetrics] = useState<DailyMetricsMental | null>(null);
+  const [tasks, setTasks] = useState<ScheduledTask[]>([]);
+  const [activeQuestionnaire, setActiveQuestionnaire] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchTodayMetrics = async () => {
-      const today = new Date().toISOString().split('T')[0];
-
-      const { data: mentalData } = await supabase
-        .from('daily_metrics_mental')
-        .select('*')
-        .eq('user_id', userProfile.id)
-        .eq('date', today)
-        .single();
-
-      if (mentalData) setMentalMetrics(mentalData);
-    };
-
-    fetchTodayMetrics();
+    loadTasks();
   }, [userProfile.id]);
 
-  // Alertas
-  const showManiaRisk = mentalMetrics && checkManiaRisk(mentalMetrics.mania_risk_score || 0, mentalMetrics.energy_level || 0);
-  const showSuicideRisk = mentalMetrics && checkSuicideRisk(mentalMetrics.suicide_risk || 0);
+  const loadTasks = async () => {
+    setLoading(true);
+    // 1. Fetch last completions from DB
+    // This is a simplified fetch - ideally we'd query a 'completions' view or specific tables
+    // For now we will mock/infer or fetch latest from each table
+
+    // Fetch latest clinical assessments
+    const { data: assessments } = await supabase
+      .from('clinical_assessments')
+      .select('type, date')
+      .eq('patient_id', userProfile.id)
+      .order('date', { ascending: false });
+
+    // Fetch latest daily metrics
+    const { data: physical } = await supabase.from('daily_metrics_physical').select('date').eq('patient_id', userProfile.id).order('date', { ascending: false }).limit(1).single();
+    const { data: mental } = await supabase.from('daily_metrics_mental').select('date').eq('patient_id', userProfile.id).order('date', { ascending: false }).limit(1).single();
+
+    const lastCompletions: Record<string, Date> = {};
+
+    if (physical) lastCompletions['DAILY_PHYSICAL'] = new Date(physical.date);
+    if (mental) lastCompletions['DAILY_MENTAL'] = new Date(mental.date);
+
+    // Map assessments to dates
+    assessments?.forEach((a: any) => {
+      if (!lastCompletions[a.type]) {
+        lastCompletions[a.type] = new Date(a.date);
+      }
+    });
+
+    const pending = SchedulerSystem.getPendingTasks(lastCompletions);
+    setTasks(pending);
+    setLoading(false);
+  };
+
+  const handleTaskClick = (task: ScheduledTask) => {
+    if (task.type === 'questionnaire' && task.questionnaireId) {
+      setActiveQuestionnaire(task.questionnaireId);
+    } else if (task.id === 'daily-physical') {
+      navigate('/training/new');
+    } else if (task.id === 'daily-mental') {
+      // In the future this should be a wizard too, for now keeping legacy route or new
+      setActiveQuestionnaire('daily-mental-wizard'); // TODO: Implement dedicated wizard
+      navigate('/assessment'); // Fallback
+    }
+  };
+
+  const handleQuestionnaireComplete = async (answers: Record<string, any>) => {
+    if (!activeQuestionnaire) return;
+
+    const qData = questionnaires.find(q => q.id === activeQuestionnaire);
+    if (!qData) return;
+
+    let score = 0;
+    if (qData.calculateScore) {
+      score = qData.calculateScore(answers);
+    }
+
+    // Save to DB
+    const { error } = await supabase.from('clinical_assessments').insert({
+      patient_id: userProfile.id,
+      date: new Date().toISOString().split('T')[0],
+      type: activeQuestionnaire,
+      raw_scores: answers,
+      total_score: score
+    });
+
+    if (error) {
+      console.error('Error saving assessment:', error);
+      alert('Erro ao salvar. Tente novamente.');
+    } else {
+      // Refresh tasks
+      setActiveQuestionnaire(null);
+      loadTasks();
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Olá, {userProfile.full_name}</h1>
-        <Button onClick={() => navigate('/assessment')}>Check-in Diário</Button>
-      </div>
-
-      {/* Alertas Críticos */}
-      {showSuicideRisk && (
-        <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg animate-pulse">
-          <strong>⚠️ ALERTA DE SEGURANÇA:</strong> Por favor, entre em contato com seu médico ou suporte imediatamente.
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Bom dia, {userProfile.full_name?.split(' ')[0]}
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400">
+            Seu monitoramento neuropsicofisiológico está <span className="text-green-600 font-medium">Ativo</span>
+          </p>
         </div>
-      )}
-
-      {showManiaRisk && (
-        <div className="bg-yellow-500/10 border border-yellow-500 text-yellow-500 p-4 rounded-lg">
-          <strong>⚠️ Alerta de Energia:</strong> Risco elevado de mania detectado. Evite estimulantes e priorize o sono.
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/history')}>
+            <Calendar className="w-4 h-4 mr-2" /> Histórico
+          </Button>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Botão Registro Diário (Treino) */}
-        <SimpleCard title="Registro Diário" className="hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => navigate('/training/new')}>
-          <div className="flex flex-col items-center justify-center py-6 gap-3">
-             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-blue-300"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 18.657a1 1 0 0 1 0 1.414l-4.242 4.243a1 1 0 0 1-1.415 0l-4.242-4.243a1 1 0 0 1 0-1.414l4.242-4.243a1 1 0 0 1 1.415 0l4.242 4.243Z"/><path d="m9.6 9.6-4.243 4.243a1 1 0 0 1-1.414 0L1.115 11.015a1 1 0 0 1 0-1.415l4.243-4.242a1 1 0 0 1 1.414 0L9.6 9.6Z"/><path d="m14.4 14.4 4.243-4.243a1 1 0 0 1 1.414 0l2.828 2.829a1 1 0 0 1 0 1.414l-4.243 4.243a1 1 0 0 1-1.414 0L14.4 14.4Z"/><path d="m9.6 9.6 4.8-4.8"/></svg>
-             </div>
-             <span className="font-semibold text-primary">Registrar Treino</span>
-          </div>
-        </SimpleCard>
-
-        {/* Botão Spravato */}
-        <SimpleCard title="Sessão Spravato" className="hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => navigate('/spravato/new')}>
-          <div className="flex flex-col items-center justify-center py-6 gap-3">
-             <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600 dark:text-purple-300"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-             </div>
-             <span className="font-semibold text-primary">Nova Sessão</span>
-          </div>
-        </SimpleCard>
-
-        {/* Botão Testes */}
-        <SimpleCard title="Testes / Avaliação" className="hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => navigate('/assessment')}>
-          <div className="flex flex-col items-center justify-center py-6 gap-3">
-             <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-300"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-             </div>
-             <span className="font-semibold text-primary">Realizar Testes</span>
-          </div>
-        </SimpleCard>
       </div>
 
-      <SimpleCard title="Histórico de Prontidão (Readiness)">
-        <ReadinessTrendChart userId={userProfile.id} days={14} />
-      </SimpleCard>
+      {/* Smart Briefing Card */}
+      <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 shadow-xl shadow-indigo-500/5">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
-      <SimpleCard title="Saúde Mental - Últimos 30 dias">
-        <MentalHealthScoreChart userId={userProfile.id} days={30} />
-      </SimpleCard>
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-indigo-500" />
+          Briefing Diário
+        </h2>
 
-      <div className="mt-6">
-        <Button 
-          onClick={() => navigate('/history')}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-        >
-          <BarChart3 className="w-5 h-5 mr-2" />
-          Ver Histórico Completo
-        </Button>
+        {loading ? (
+          <p>Carregando cronograma...</p>
+        ) : tasks.length === 0 ? (
+          <div className="flex items-center gap-3 text-green-600 bg-green-50/50 p-4 rounded-lg">
+            <CheckCircle className="w-6 h-6" />
+            <p className="font-medium">Tudo em dia! Você completou todas as avaliações programadas.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {tasks.map(task => (
+              <div
+                key={task.id}
+                onClick={() => handleTaskClick(task)}
+                className={`
+                            group flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all
+                            ${task.priority === 'high'
+                    ? 'bg-indigo-50/50 border-indigo-200 hover:bg-indigo-100 hover:shadow-md'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}
+                        `}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`
+                                w-2 h-12 rounded-full 
+                                ${task.priority === 'high' ? 'bg-indigo-500' : 'bg-slate-400'}
+                            `} />
+                  <div>
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-200">{task.title}</h3>
+                    <p className="text-sm text-slate-500">
+                      {task.priority === 'high' ? 'Recomendado para hoje' : 'Disponível nesta semana'}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant={task.priority === 'high' ? 'default' : 'outline'}>
+                  Iniciar
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Charts / Neurons Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg group-hover:scale-110 transition-transform">
+              <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Prontidão Neurofisiológica</h3>
+              <p className="text-xs text-slate-500">Monitoramento de recuperação do SNC</p>
+            </div>
+          </div>
+          <ReadinessTrendChart userId={userProfile.id} days={14} />
+        </div>
+
+        <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md group">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:scale-110 transition-transform">
+              <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Oscilação de Humor & Sintomas</h3>
+              <p className="text-xs text-slate-500">Correlação: Mania vs Depressão</p>
+            </div>
+          </div>
+          <MentalHealthScoreChart userId={userProfile.id} days={30} />
+        </div>
+
+        <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md col-span-1 lg:col-span-2 group">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg group-hover:scale-110 transition-transform">
+              <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">Carga de Treino (Fitness vs Fadiga)</h3>
+              <p className="text-xs text-slate-500">Modelo de Banister (ATL / CTL / TSB)</p>
+            </div>
+          </div>
+          <TrainingLoadChart userId={userProfile.id} days={28} />
+        </div>
+      </div>
+
+      {/* Assessment Library */}
+      <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+            <ClipboardList className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Biblioteca de Avaliações</h3>
+            <p className="text-xs text-slate-500">Acesse qualquer questionário sob demanda</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {questionnaires.map((q) => (
+            <div
+              key={q.id}
+              onClick={() => setActiveQuestionnaire(q.id)}
+              className="group p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Play className="w-4 h-4 text-indigo-500" />
+              </div>
+              <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-1 pr-6">{q.title}</h4>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-full">
+                  {q.category}
+                </span>
+                <span className="text-xs text-slate-400">{q.questions.length} questões</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Questionnaire Modal */}
+      {activeQuestionnaire && (() => {
+        const q = questionnaires.find(i => i.id === activeQuestionnaire);
+        if (!q) return null;
+        return (
+          <QuestionnaireRunner
+            questionnaire={q}
+            onClose={() => setActiveQuestionnaire(null)}
+            onComplete={handleQuestionnaireComplete}
+          />
+        );
+      })()}
+
     </div>
   );
 }
+

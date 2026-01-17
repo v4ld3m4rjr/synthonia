@@ -33,7 +33,16 @@ CREATE TABLE public.daily_metrics_physical (
     readiness_to_train INTEGER CHECK (readiness_to_train BETWEEN 0 AND 10),
     perception_recovery_prs INTEGER CHECK (perception_recovery_prs BETWEEN 0 AND 10),
     resting_hr INTEGER,
+    hrv NUMERIC, -- Heart Rate Variability
     jump_test_result NUMERIC,
+    -- Training Load Metrics
+    daily_load_arbitrary NUMERIC, -- Daily load (e.g. Duration * RPE)
+    ctl NUMERIC, -- Chronic Training Load (Fitness)
+    atl NUMERIC, -- Acute Training Load (Fatigue)
+    tsb NUMERIC, -- Training Stress Balance (Form)
+    daily_monotony NUMERIC,
+    weekly_monotony NUMERIC,
+    daily_strain NUMERIC,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     UNIQUE(patient_id, date)
 );
@@ -68,6 +77,7 @@ CREATE TABLE public.training_sessions (
     date TIMESTAMP WITH TIME ZONE NOT NULL,
     duration_minutes INTEGER,
     session_rpe INTEGER CHECK (session_rpe BETWEEN 0 AND 10),
+    session_load NUMERIC, -- Derived: duration * rpe
     exercises_json JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -93,7 +103,28 @@ CREATE TABLE public.clinical_assessments (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     patient_id UUID REFERENCES public.profiles(id) NOT NULL,
     date DATE NOT NULL,
-    type TEXT CHECK (type IN ('PHQ9', 'GAD7', 'ASRM', 'FAST', 'YBOCS', 'EQ5D', 'TSQM')),
+    type TEXT CHECK (type IN (
+        -- Depressão
+        'PHQ9', 'HAMD', 'MADRS', 'QIDSSR',
+        -- Mania
+        'PMQ9', 'ASRM', 'YMRS', 'ASERT',
+        -- Bipolaridade
+        'ISS', 'FAST',
+        -- TOC
+        'OCIR', 'MOCI', 'OCCDS', 'YBOCS',
+        -- Autismo
+        'RAADS', 'SPQ', 'ASDQ', 'APDQ', 'SAB',
+        -- Ansiedade
+        'GAD7',
+        -- Qualidade de vida
+        'EQ5D5L', 'QLDS', 'WHOQOLBREF',
+        -- Satisfação
+        'TSQM9',
+        -- Funcionamento Global
+        'GAF',
+        -- Efeitos Adversos
+        'ADVERSE_CHECKLIST', 'CADSS6', 'LCQ'
+    )),
     raw_scores JSONB DEFAULT '{}'::jsonb,
     total_score NUMERIC,
     burnout_index INTEGER CHECK (burnout_index BETWEEN 0 AND 10),
