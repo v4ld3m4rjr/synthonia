@@ -68,6 +68,6 @@ export class SchedulerSystem {
             }
         });
 
-        return tasks.sort((a, b) => (a.priority === 'high' ? -1 : 1));
+        return tasks.sort((a) => (a.priority === 'high' ? -1 : 0));
     }
 }
