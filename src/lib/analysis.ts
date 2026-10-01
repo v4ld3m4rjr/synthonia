@@ -148,20 +148,22 @@ export function computeStaticAngles(frames: PoseFrame[], vista: AssessmentView):
         quadrilF.push(toDeg(Math.atan2(rh.y - lh.y, rh.x - lh.x || 1e-6)) * (rh.x >= lh.x ? 1 : -1));
       }
       if (hipMid && kneeMid && ankMid) quadrilL.push(angleABC(hipMid, kneeMid, ankMid));
-      // valgo/varo por perna (assinatura relativa ao alinhamento quadril-tornozelo)
-      for (const [hp, kn, ak] of [
-        [lh, lk, la],
-        [rh, rk, ra],
+      // valgo/varo por perna: deslocamento medial (+) ou lateral (-) do joelho
+      // em relação à linha quadril-tornozelo, normalizado pelo comprimento da perna
+      for (const [hp, kn, ak, isLeft] of [
+        [lh, lk, la, true],
+        [rh, rk, ra, false],
       ] as const) {
         if (hp && kn && ak) {
           const vRef = vec(hp, ak);
-          const vKN = vec(hp, kn);
-          const cross = vRef.x * vKN.y - vRef.y * vKN.x;
-          const dot = vRef.x * vKN.x + vRef.y * vKN.y;
-          const off = toDeg(Math.atan2(cross, dot));
-          // joelho deslocado para dentro (em relação à linha quadril-tornozelo) => valgo
-          const inside = kn.x > (hp.x + ak.x) / 2 ? Math.abs(off) : -Math.abs(off);
-          valgo.push(inside);
+          const len = Math.hypot(vRef.x, vRef.y);
+          if (len < 1e-6) continue;
+          // deslocamento horizontal do joelho em relação ao ponto médio quadril-tornozelo,
+          // normalizado pelo comprimento da perna. Positivo = valgo (joelho para dentro).
+          const midX = (hp.x + ak.x) / 2;
+          const medialShift = isLeft ? kn.x - midX : midX - kn.x; // na imagem, a perna esquerda do usuário aparece à direita (x maior); "dentro" = em direção ao centro
+          const magnitude = (Math.abs(medialShift) / len) * 100; // % do comprimento quadril-tornozelo
+          valgo.push(medialShift >= 0 ? magnitude : -magnitude);
         }
       }
     }

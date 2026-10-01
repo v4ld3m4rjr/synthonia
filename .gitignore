@@ -1,2 +1,11 @@
-# Logs and temp files
-dev.log
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+
+# Logs
+*.log
+
+# Netlify local config/state
+.netlify/
